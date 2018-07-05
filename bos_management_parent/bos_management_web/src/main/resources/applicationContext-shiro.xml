@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" 
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa" 
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="
+						http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+						http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+						http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+						http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+						http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+						http://www.springframework.org/schema/data/jpa 
+						http://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
+		
+	<!-- 配置过滤器工厂 -->
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+		<!-- 注入安全管理器 -->
+		<property name="securityManager" ref="securityManager"></property>
+		<!-- 注入相关页面
+			loginUrl ：登陆页面=用户没有登录，访问某个url(要求当前用户登陆后可见)shiro框架跳转登录页
+		    successUrl;登陆成功页面=可以不配（通过struts2框架跳转）
+		    unauthorizedUrl;权限不足页面=用户登陆后访问url(要求必须有某个权限)，如果用户没有权限，跳转此页面
+		 -->
+		<property name="loginUrl" value="/login.jsp"></property>
+		<property name="unauthorizedUrl" value="/unauthorized.jsp"></property>
+		<!-- 配置过滤器链：配置项目中url对应拦截规则（怎么验权） -->
+		<!-- 
+			等号左侧代表项目url    /** 项目中所有url
+			等号右侧代表url经过哪个过滤器（shiro框架提供，使用简称即可）
+			authc:表单认证过滤器（访问url，要求当前用户必须认证通过后才有权限访问）
+			anon:匿名过滤器（访问url，不需要登陆，不需要有权限==直接放行）
+			perms:权限授权过滤器（访问url,要求当前用户必须有某个权限）
+			roles:角色授权过滤器（访问url,要求当前用户必须有某个角色）
+		 -->
+		<property name="filterChainDefinitions">
+			<value>
+				/js/** = anon
+				/images/** = anon
+				/css/** = anon
+				/login.jsp = anon
+				/validatecode.jsp* = anon
+				/userAction_login.action = anon
+				/service/** = anon
+				/pages/base/standard.jsp = perms["standard_page"]
+<!-- 				/courierAction_delete.action = perms["courier_delete"] -->
+				/pages/base/courier.jsp = roles["admin"]
+				/** = authc
+			</value>
+		</property>
+	</bean>
+	
+	<!-- 配置安全管理器对象 -->
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+		<!-- 注入自定义realm对象 -->
+		<property name="realm" ref="bosRealm"></property>
+		<!-- 开启ehcache缓存 -->
+		<property name="cacheManager" ref="cacheManager"></property>
+	</bean>
+	
+	<!-- 配置缓存管理器 -->
+	<bean id="cacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+		<!-- 注入ehcache配置文件 -->
+		<property name="cacheManagerConfigFile" value="classpath:ehcache.xml"></property>
+	</bean>
+	
+	
+	<!-- 开启shiro注解支持 -->
+	<!-- 
+		自动代理：自动根据情况不同选择代理技术
+		有接口：使用jdk动态代理==产生实现类代理对象
+		没有接口：使用cglib动态代理==产生子类代理对象
+		设置自动代理：强制使用cglib动态代理产生代理对象==如果使用自动代理使用jdk动态代理。产生对象为null -->
+	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator">
+		<property name="proxyTargetClass" value="true"></property>
+	</bean>
+	
+	<!-- 配置验权切面：通知/增强（扩展功能代码：验证权限）+切点（shiro注解所在方法） -->
+	<bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor"></bean>
+</beans>
